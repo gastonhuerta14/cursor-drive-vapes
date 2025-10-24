@@ -1,0 +1,112 @@
+<script>
+const $ = s => document.querySelector(s);
+let currentSeller='', currentCat='', currentProd='';
+
+function gs(fn, payload){
+  return new Promise((res,rej)=>{
+    google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(e?.message||String(e)))[fn](payload||{});
+  });
+}
+function setStep(n){
+  $('#step-indicator').textContent = `${n}/3`;
+  $('#step-1').classList.toggle('hidden', n!==1);
+  $('#step-2').classList.toggle('hidden', n!==2);
+  $('#step-3').classList.toggle('hidden', n!==3);
+}
+
+/* --------- Vendedores como tiles --------- */
+async function loadSellers(){
+  const wrap = $('#grid-sellers');
+  wrap.innerHTML = '';
+  $('#seller-manual-wrap').classList.add('hidden');
+
+  const renderTiles = (names=[]) => {
+    if (!Array.isArray(names) || names.length === 0) {
+      $('#seller-manual-wrap').classList.remove('hidden');
+      return;
+    }
+    wrap.innerHTML = names.map(n => `
+      <button class="tile-btn" data-seller="${(n||'').replace(/"/g,'&quot;')}">${n}</button>
+    `).join('');
+    wrap.querySelectorAll('.tile-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ currentSeller = btn.dataset.seller; nextFromSeller(); });
+    });
+  };
+
+  try { renderTiles(await gs('listSellers')); }
+  catch(e){ console.error('listSellers error:', e); renderTiles([]); }
+}
+
+function nextFromSeller(){ setStep(2); loadCategories(); }
+
+/* --------- Categorías --------- */
+function placeholderFor(cat){
+  const k=(cat||'').toLowerCase();
+  if (k.includes('kit')) return 'https://picsum.photos/seed/kit/640/360';
+  if (k.includes('cart')) return 'https://picsum.photos/seed/cart/640/360';
+  if (k.includes('sk'))  return 'https://picsum.photos/seed/sk/640/360';
+  return 'https://picsum.photos/seed/vapes/640/360';
+}
+async function loadCategories(){
+  const grid = $('#grid-cats'); grid.innerHTML='';
+  const cats = await gs('listCategoriesWithImages');
+  if (!cats || !cats.length){ grid.innerHTML = `<div class="hint">No hay stock disponible.</div>`; return; }
+  grid.innerHTML = cats.map(it => `
+    <div class="card" data-cat="${it.categoria}">
+      <img src="${it.img || placeholderFor(it.categoria)}" alt="">
+      <div class="label">${it.categoria}</div>
+    </div>`).join('');
+  grid.querySelectorAll('.card').forEach(c => c.addEventListener('click', ()=> openCategory(c.dataset.cat)));
+}
+
+/* --------- Productos --------- */
+async function openCategory(cat){
+  currentCat = cat; setStep(3); $('#title-cat').textContent = cat;
+  const grid = $('#grid-products');
+  const prods = await gs('listProductsByCategory', { categoria: cat });
+  grid.innerHTML = prods.map(p => `
+    <div class="card" data-prod="${p.producto}">
+      <img src="${placeholderFor(cat)}" alt=""><div class="label">${p.producto}</div>
+    </div>`).join('');
+  grid.querySelectorAll('.card').forEach(c => c.addEventListener('click', ()=> openSheet(c.dataset.prod)));
+}
+
+/* --------- Sheet de confirmación --------- */
+async function openSheet(prod){
+  currentProd = prod;
+  const info = await gs('getProductInfo', { producto: prod });
+  $('#p-name').textContent = prod;
+  $('#p-price').textContent = new Intl.NumberFormat('es-AR').format(info.precio);
+  $('#p-stock').textContent = info.cantidad;
+  $('#p-qty').value = 1; $('#p-msg').textContent='';
+  $('#sheet').classList.remove('hidden');
+}
+async function doSell(){
+  const vendedor = currentSeller || ($('#seller-manual')?.value||'').trim();
+  const qty = Number($('#p-qty').value||1);
+  const msg = $('#p-msg'); msg.style.color='#9aa3b2'; msg.textContent='Procesando…';
+  try{
+    const r = await gs('sell', { vendedor, producto: currentProd, cantidadVendida: qty });
+    if (!r.ok){ msg.style.color='#ff8b8b'; msg.textContent=r.error||'Error'; return; }
+    msg.style.color='#6ee7b7'; msg.textContent=`Venta OK. Pedido: ${r.pedidoId} | Stock: ${r.nuevoStock}`;
+    $('#p-stock').textContent=r.nuevoStock;
+  }catch(e){ msg.style.color='#ff8b8b'; msg.textContent=String(e); }
+}
+function closeSheet(){ $('#sheet').classList.add('hidden'); }
+
+/* --------- INIT --------- */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  setStep(1);
+  $('#sheet').classList.add('hidden'); // por si el CSS tarda
+  document.getElementById('seller-manual-continue').addEventListener('click', ()=>{
+    const val = ($('#seller-manual').value||'').trim();
+    if (!val) { $('#seller-manual').focus(); return; }
+    currentSeller = val; nextFromSeller();
+  });
+  await loadSellers();
+  document.getElementById('back-1').addEventListener('click', ()=> setStep(1));
+  document.getElementById('back-2').addEventListener('click', ()=> setStep(2));
+  document.getElementById('p-sell').addEventListener('click', doSell);
+  document.getElementById('p-close').addEventListener('click', closeSheet);
+});
+</script>
