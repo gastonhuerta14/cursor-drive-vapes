@@ -1,0 +1,104 @@
+<script>
+const $ = s => document.querySelector(s);
+const stepIndicator = $('#step-indicator');
+let currentSeller='', currentCat='', currentProd='';
+
+function gs(fn, payload){
+  return new Promise((res,rej)=>{
+    google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(e?.message||String(e)))[fn](payload||{});
+  });
+}
+
+function setStep(n){
+  stepIndicator.textContent = `${n}/3`;
+  $('#step-1').classList.toggle('hidden', n!==1);
+  $('#step-2').classList.toggle('hidden', n!==2);
+  $('#step-3').classList.toggle('hidden', n!==3);
+}
+
+async function loadSellers(){
+  const sel = $('#seller');
+  sel.innerHTML = `<option value="">Cargando…</option>`;
+  try{
+    const sellers = await gs('listSellers');
+    if (!sellers || !sellers.length){
+      sel.innerHTML = `<option value="">(escribí tu nombre)</option>`;
+      let input = document.querySelector('#seller-manual');
+      if (!input){
+        input = document.createElement('input');
+        input.id='seller-manual'; input.className='input'; input.placeholder='Tu nombre';
+        sel.insertAdjacentElement('afterend', input);
+        input.addEventListener('change', ()=>{ if (input.value.trim()) { currentSeller = input.value.trim(); nextFromSeller(); }});
+      }
+      return;
+    }
+    sel.innerHTML = `<option value="">Elegí vendedor</option>` + sellers.map(s=>`<option>${s}</option>`).join('');
+  }catch(e){
+    sel.innerHTML = `<option value="">(escribí tu nombre)</option>`;
+  }
+}
+
+function nextFromSeller(){ setStep(2); loadCategories(); }
+
+function placeholderFor(cat){
+  const k=(cat||'').toLowerCase();
+  if (k.includes('kit')) return 'https://picsum.photos/seed/kit/640/360';
+  if (k.includes('cart')) return 'https://picsum.photos/seed/cart/640/360';
+  if (k.includes('sk')) return 'https://picsum.photos/seed/sk/640/360';
+  return 'https://picsum.photos/seed/vapes/640/360';
+}
+
+async function loadCategories(){
+  const grid = $('#grid-cats'); grid.innerHTML='';
+  const cats = await gs('listCategoriesWithImages');
+  if (!cats.length){ grid.innerHTML = `<div class="hint">No hay stock disponible.</div>`; return; }
+  grid.innerHTML = cats.map(it => `
+    <div class="card" data-cat="${it.categoria}">
+      <img src="${it.img || placeholderFor(it.categoria)}"><div class="label">${it.categoria}</div>
+    </div>`).join('');
+  grid.querySelectorAll('.card').forEach(c => c.addEventListener('click', ()=> openCategory(c.dataset.cat)));
+}
+
+async function openCategory(cat){
+  currentCat = cat; setStep(3); $('#title-cat').textContent = cat;
+  const grid = $('#grid-products');
+  const prods = await gs('listProductsByCategory', { categoria: cat });
+  grid.innerHTML = prods.map(p => `
+    <div class="card" data-prod="${p.producto}">
+      <img src="${placeholderFor(cat)}"><div class="label">${p.producto}</div>
+    </div>`).join('');
+  grid.querySelectorAll('.card').forEach(c => c.addEventListener('click', ()=> openSheet(c.dataset.prod)));
+}
+
+async function openSheet(prod){
+  currentProd = prod;
+  const info = await gs('getProductInfo', { producto: prod });
+  $('#p-name').textContent = prod;
+  $('#p-price').textContent = new Intl.NumberFormat('es-AR').format(info.precio);
+  $('#p-stock').textContent = info.cantidad;
+  $('#p-qty').value = 1; $('#p-msg').textContent='';
+  $('#sheet').classList.remove('hidden');
+}
+async function doSell(){
+  const vendedor = currentSeller || $('#seller').value || document.querySelector('#seller-manual')?.value?.trim() || '';
+  const qty = Number($('#p-qty').value||1);
+  const msg = $('#p-msg'); msg.style.color='#9aa3b2'; msg.textContent='Procesando…';
+  try{
+    const r = await gs('sell', { vendedor, producto: currentProd, cantidadVendida: qty });
+    if (!r.ok){ msg.style.color='#ff8b8b'; msg.textContent=r.error||'Error'; return; }
+    msg.style.color='#6ee7b7'; msg.textContent=`Venta OK. Pedido: ${r.pedidoId} | Stock: ${r.nuevoStock}`;
+    $('#p-stock').textContent=r.nuevoStock;
+  }catch(e){ msg.style.color='#ff8b8b'; msg.textContent=String(e); }
+}
+function closeSheet(){ $('#sheet').classList.add('hidden'); }
+
+document.addEventListener('DOMContentLoaded', async ()=>{
+  setStep(1);
+  await loadSellers();
+  $('#seller').addEventListener('change', e => { if (e.target.value){ currentSeller=e.target.value; nextFromSeller(); }});
+  $('#back-1').addEventListener('click', ()=> setStep(1));
+  $('#back-2').addEventListener('click', ()=> setStep(2));
+  $('#p-sell').addEventListener('click', doSell);
+  $('#p-close').addEventListener('click', closeSheet);
+});
+</script>
