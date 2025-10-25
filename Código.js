@@ -314,12 +314,6 @@ function refreshUnprotectedRange_() {
 
 
 
-{}
-
-
-
-
-
 
 /***** ====== CATÁLOGO PDF (Producto + Precio con fondo) ====== *****/
 const HEADER_ROWS_CATALOGO = 6; 
