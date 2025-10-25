@@ -1,0 +1,187 @@
+<script>
+var $ = function(selector){ return document.querySelector(selector); };
+var currentSeller='', currentCat='', currentProd='';
+
+function gs(fn, payload){
+  return new Promise(function(resolve, reject){
+    if (!(window.google && google.script && google.script.run && google.script.run.withSuccessHandler)) {
+      reject('No se pudo conectar con Apps Script.');
+      return;
+    }
+    google.script.run
+      .withSuccessHandler(function(result){ resolve(result); })
+      .withFailureHandler(function(error){
+        var message = (error && error.message) ? error.message : String(error);
+        reject(message);
+      })[fn](payload || {});
+  });
+}
+function setStep(n){
+  $('#step-indicator').textContent = n + '/3';
+  var step1 = $('#step-1');
+  var step2 = $('#step-2');
+  var step3 = $('#step-3');
+  if (step1) {
+    if (n !== 1) step1.classList.add('hidden'); else step1.classList.remove('hidden');
+  }
+  if (step2) {
+    if (n !== 2) step2.classList.add('hidden'); else step2.classList.remove('hidden');
+  }
+  if (step3) {
+    if (n !== 3) step3.classList.add('hidden'); else step3.classList.remove('hidden');
+  }
+}
+
+/* --------- Vendedores como tiles --------- */
+function loadSellers(){
+  var wrap = $('#grid-sellers');
+  wrap.innerHTML = '';
+  $('#seller-manual-wrap').classList.add('hidden');
+  var sellerError = $('#seller-error');
+  if (sellerError) {
+    sellerError.classList.add('hidden');
+    sellerError.textContent = '';
+  }
+
+  var renderTiles = function(names){
+    if (!Array.isArray(names) || names.length === 0) {
+      $('#seller-manual-wrap').classList.remove('hidden');
+      return;
+    }
+    wrap.innerHTML = names.map(function(name){
+      var safe = String(name || '').replace(/"/g,'&quot;');
+      return '<button class="tile-btn" data-seller="' + safe + '">' + name + '</button>';
+    }).join('');
+    Array.prototype.forEach.call(wrap.querySelectorAll('.tile-btn'), function(btn){
+      btn.addEventListener('click', function(){
+        currentSeller = btn.getAttribute('data-seller');
+        nextFromSeller();
+      });
+    });
+  };
+
+  return gs('listSellers')
+    .then(function(sellers){ renderTiles(sellers); })
+    .catch(function(error){
+      console.error('listSellers error:', error);
+      if (sellerError) {
+        sellerError.textContent = 'No pudimos cargar los vendedores automáticamente. Escribí tu nombre.';
+        sellerError.classList.remove('hidden');
+      }
+      renderTiles([]);
+    });
+}
+
+function nextFromSeller(){ setStep(2); loadCategories(); }
+
+/* --------- Categorías --------- */
+function placeholderFor(cat){
+  var k = (cat || '').toLowerCase();
+  if (k.indexOf('kit') !== -1) return 'https://picsum.photos/seed/kit/640/360';
+  if (k.indexOf('cart') !== -1) return 'https://picsum.photos/seed/cart/640/360';
+  if (k.indexOf('sk') !== -1)  return 'https://picsum.photos/seed/sk/640/360';
+  return 'https://picsum.photos/seed/vapes/640/360';
+}
+function loadCategories(){
+  var grid = $('#grid-cats'); grid.innerHTML='';
+  return gs('listCategoriesWithImages')
+    .then(function(cats){
+      if (!cats || !cats.length){
+        grid.innerHTML = '<div class="hint">No hay stock disponible.</div>';
+        return;
+      }
+      grid.innerHTML = cats.map(function(item){
+        var img = item.img || placeholderFor(item.categoria);
+        return '<div class="card" data-cat="' + item.categoria + '"><img src="' + img + '" alt=""><div class="label">' + item.categoria + '</div></div>';
+      }).join('');
+      Array.prototype.forEach.call(grid.querySelectorAll('.card'), function(card){
+        card.addEventListener('click', function(){ openCategory(card.getAttribute('data-cat')); });
+      });
+    })
+    .catch(function(error){
+      console.error('listCategoriesWithImages error:', error);
+      grid.innerHTML = '<div class="hint">Error al cargar categorías. Volvé a intentar.</div>';
+    });
+}
+
+/* --------- Productos --------- */
+function openCategory(cat){
+  currentCat = cat; setStep(3); $('#title-cat').textContent = cat;
+  var grid = $('#grid-products');
+  return gs('listProductsByCategory', { categoria: cat })
+    .then(function(prods){
+      if (!prods || !prods.length){
+        grid.innerHTML = '<div class="hint">Sin productos disponibles.</div>';
+        return;
+      }
+      grid.innerHTML = prods.map(function(prod){
+        return '<div class="card" data-prod="' + prod.producto + '"><img src="' + placeholderFor(cat) + '" alt=""><div class="label">' + prod.producto + '</div></div>';
+      }).join('');
+      Array.prototype.forEach.call(grid.querySelectorAll('.card'), function(card){
+        card.addEventListener('click', function(){ openSheet(card.getAttribute('data-prod')); });
+      });
+    })
+    .catch(function(error){
+      console.error('listProductsByCategory error:', error);
+      grid.innerHTML = '<div class="hint">No pudimos cargar los productos.</div>';
+    });
+}
+
+/* --------- Sheet de confirmación --------- */
+function openSheet(prod){
+  currentProd = prod;
+  return gs('getProductInfo', { producto: prod })
+    .then(function(info){
+      $('#p-name').textContent = prod;
+      $('#p-price').textContent = new Intl.NumberFormat('es-AR').format(info.precio);
+      $('#p-stock').textContent = info.cantidad;
+      $('#p-qty').value = 1; $('#p-msg').textContent='';
+      $('#sheet').classList.remove('hidden');
+    })
+    .catch(function(error){ console.error('getProductInfo error:', error); });
+}
+function doSell(){
+  var manualInput = document.getElementById('seller-manual');
+  var vendedor = currentSeller || (manualInput ? manualInput.value.trim() : '');
+  var qty = Number($('#p-qty').value||1);
+  var msg = $('#p-msg'); msg.style.color='#9aa3b2'; msg.textContent='Procesando…';
+  gs('sell', { vendedor: vendedor, producto: currentProd, cantidadVendida: qty })
+    .then(function(r){
+      if (!r.ok){ msg.style.color='#ff8b8b'; msg.textContent=r.error||'Error'; return; }
+      msg.style.color='#6ee7b7'; msg.textContent='Venta OK. Pedido: ' + r.pedidoId + ' | Stock: ' + r.nuevoStock;
+      $('#p-stock').textContent = r.nuevoStock;
+    })
+    .catch(function(e){ msg.style.color='#ff8b8b'; msg.textContent=String(e); });
+}
+function closeSheet(){ $('#sheet').classList.add('hidden'); }
+
+/* --------- INIT --------- */
+document.addEventListener('DOMContentLoaded', function(){
+  setStep(1);
+  $('#sheet').classList.add('hidden'); // por si el CSS tarda
+
+  var manualContinue = document.getElementById('seller-manual-continue');
+  if (manualContinue) {
+    manualContinue.addEventListener('click', function(){
+      var input = document.getElementById('seller-manual');
+      var val = input ? input.value.trim() : '';
+      if (!val) {
+        if (input) { input.focus(); }
+        return;
+      }
+      currentSeller = val; nextFromSeller();
+    });
+  }
+
+  loadSellers();
+
+  var back1 = document.getElementById('back-1');
+  if (back1) back1.addEventListener('click', function(){ setStep(1); });
+  var back2 = document.getElementById('back-2');
+  if (back2) back2.addEventListener('click', function(){ setStep(2); });
+  var sellBtn = document.getElementById('p-sell');
+  if (sellBtn) sellBtn.addEventListener('click', doSell);
+  var closeBtn = document.getElementById('p-close');
+  if (closeBtn) closeBtn.addEventListener('click', closeSheet);
+});
+</script>

@@ -1,0 +1,49 @@
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --text:#eaeef5; --muted:#9aa3b2; --accent:#5ac8fa; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; background:var(--bg); color:var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; font-size:18px; }
+  .topbar{ display:flex; justify-content:space-between; align-items:center;
+    padding:14px 16px; background:#12161d; position:sticky; top:0; z-index:10; }
+  .brand{ font-weight:800; letter-spacing:.3px; font-size:20px; }
+  .steps{ font-size:14px; color:#cbd5e1; }
+  .ghost{ background:transparent; border:1px solid #2a2f3a; color:var(--text);
+    padding:10px 14px; border-radius:12px; font-size:16px; }
+  .primary{ background:var(--accent); color:#001018; border:0; padding:14px;
+    border-radius:14px; font-weight:800; font-size:18px; }
+  .input, select{ width:100%; padding:14px 12px; border-radius:12px; border:1px solid #2a2f3a;
+    background:#0e1118; color:var(--text); font-size:18px; }
+  .screen{ padding:16px; min-height:calc(100dvh - 56px); }
+  h2{ margin:18px 4px; font-size:20px; color:#d5def0; }
+  .hint{ color:var(--muted); margin-top:10px; }
+  .grid{ display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; }
+  @media(min-width:680px){ .grid{ grid-template-columns:repeat(3, 1fr); } }
+  .card{ background:var(--card); border-radius:16px; overflow:hidden; box-shadow:0 4px 18px rgba(0,0,0,.35); display:flex; flex-direction:column; }
+  .card img{ width:100%; height:160px; object-fit:cover; background:#111; }
+  .card .label{ padding:12px; font-weight:700; font-size:16px; }
+  .hidden{ display:none !important; }  /* CLAVE: oculta de verdad */
+  .back{ margin:8px 0; }
+  .sheet{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; justify-content:center; align-items:flex-end; }
+  .sheet-body{ background:#0f131b; width:100%; max-width:520px; border-top-left-radius:20px; border-top-right-radius:20px; padding:18px; }
+  .row{ display:flex; justify-content:space-between; align-items:center; margin:12px 0; font-size:18px; }
+  .msg{ min-height:20px; margin-top:10px; color:var(--muted); font-size:16px; }
+  .hint.error{ color:#ff8b8b; }
+
+  /* Vendedores: tiles 2 por fila */
+  .grid.sellers { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .tile-btn {
+    background: var(--card);
+    border: 2px solid #222b36;
+    border-radius: 16px;
+    padding: 18px 12px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: .2px;
+    user-select: none;
+    box-shadow: 0 4px 18px rgba(0,0,0,.25);
+    transition: transform .06s ease, border-color .12s ease;
+  }
+  .tile-btn:active { transform: scale(.98); }
+  .tile-btn:hover  { border-color: #2f3a46; }
+</style>
