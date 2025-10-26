@@ -51,27 +51,3 @@
   <?!= include('app_js'); ?>
 </body>
 </html>
-
-  <!-- Paso 3: Productos -->
-  <main id="step-3" class="screen hidden">
-    <button class="ghost back" id="back-2">← Categorías</button>
-    <h2 id="title-cat">Productos</h2>
-    <div id="grid-products" class="grid"></div>
-  </main>
-
-  <!-- Sheet confirmación (arranca oculto) -->
-  <div id="sheet" class="sheet hidden">
-    <div class="sheet-body">
-      <h3 id="p-name"></h3>
-      <div class="row"><div>Precio</div><div id="p-price"></div></div>
-      <div class="row"><div>Stock</div><div id="p-stock"></div></div>
-      <div class="row"><div>Cantidad</div><input id="p-qty" type="number" min="1" value="1" class="input"></div>
-      <button id="p-sell" class="primary">Registrar venta</button>
-      <button id="p-close" class="ghost">Cerrar</button>
-      <div id="p-msg" class="msg"></div>
-    </div>
-  </div>
-
-  <?!= include('app_js'); ?>
-</body>
-</html>
