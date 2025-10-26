@@ -1,11 +1,14 @@
 <!doctype html>
 <html>
-  <head><base target="_top"><style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;padding:12px}
-    .btn{display:inline-block;background:#5ac8fa;color:#001018;border:0;border-radius:10px;
-      padding:10px 14px;font-weight:800;text-decoration:none}
-    .hint{color:#555;margin-top:8px}
-  </style></head>
+  <head>
+    <base target="_top">
+    <style>
+      body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;padding:12px}
+      .btn{display:inline-block;background:#5ac8fa;color:#001018;border:0;border-radius:10px;
+        padding:10px 14px;font-weight:800;text-decoration:none}
+      .hint{color:#555;margin-top:8px}
+    </style>
+  </head>
   <body>
     <h3>Ventas de Vapes</h3>
     <p>Abrí la app optimizada para celular/tablet:</p>
@@ -16,32 +19,4 @@
       document.getElementById('openLink').href = 'PEGÁ_ACÁ_TU_URL_WEBAPP';
     </script>
   </body>
-</html>
-        <button id="btn-unlock">Desbloquear</button>
-      </div>
-
-      <div id="admin-panel" class="hidden">
-        <h3>Crear producto</h3>
-        <input id="c-prod" placeholder="Producto (Cat – Sabor)">
-        <input id="c-precio" placeholder="Precio" type="number">
-        <input id="c-cant" placeholder="Cantidad" type="number">
-        <label><input type="checkbox" id="c-activo" checked> Activo</label>
-        <button id="btn-create">Crear</button>
-
-        <h3 style="margin-top:14px;">Editar producto</h3>
-        <input id="u-prod" placeholder="Producto exacto">
-        <input id="u-precio" placeholder="Precio nuevo" type="number">
-        <input id="u-delta" placeholder="Δ Stock (+/-)" type="number">
-        <label><input type="checkbox" id="u-activo"> Activo</label>
-        <button id="btn-update">Guardar cambios</button>
-
-        <h4 style="margin-top:14px;">Cambiar PIN</h4>
-        <input id="pin-actual" type="password" placeholder="PIN actual">
-        <input id="pin-nuevo" type="password" placeholder="PIN nuevo (≥4)">
-        <button id="btn-setpin">Cambiar PIN</button>
-      </div>
-    </details>
-  </div>
-  <?!= HtmlService.createHtmlOutputFromFile('ui_js').getContent(); ?>
-</body>
 </html>
